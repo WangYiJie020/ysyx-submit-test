@@ -344,6 +344,7 @@ jobs:
       - name: Check verilog top module name
         if: steps.cache-dir.outputs.cache-hit != 'true'
         run: |
+          set -x
           VFILE=${{ steps.vfilename.outputs.VFILE }}
           STR=`cat $VFILE | tr '\n' ' ' | grep -E "module\s+ysyx_$STUID" 2> /dev/null`
           if [[ $STR == "" ]]; then
