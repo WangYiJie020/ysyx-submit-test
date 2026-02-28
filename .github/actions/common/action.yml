@@ -51,6 +51,7 @@ runs:
         sudo apt update
         sudo apt install -y g++-riscv64-linux-gnu llvm llvm-dev
         sudo sed -i -e '8d' /usr/riscv64-linux-gnu/include/gnu/stubs.h
+        riscv64-linux-gnu-ld -v
 
     - name: Install dependency for NVBoard
       shell: bash
