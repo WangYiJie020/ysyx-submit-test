@@ -344,15 +344,11 @@ jobs:
       - name: Check verilog top module name
         if: steps.cache-dir.outputs.cache-hit != 'true'
         run: |
-          set -x
           VFILE=${{ steps.vfilename.outputs.VFILE }}
           if [ ! -f "$VFILE" ]; then
             echo "Error: File $VFILE not found!"
             exit 1
           fi
-          STR0=`cat $VFILE`
-          STR1=`cat $VFILE | tail -n 140`
-          STR2=`cat $VFILE | tr '\n' ' ' | grep "module ysyx_$STUID"`
           STR=`cat $VFILE | tr '\n' ' ' | grep -E "module\s+ysyx_$STUID" 2> /dev/null`
           if [[ $STR == "" ]]; then
             echo "Can not find module ysyx_$STUID in $VFILE. Abort."
