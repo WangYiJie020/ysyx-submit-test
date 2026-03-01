@@ -500,7 +500,6 @@ jobs:
       - name: rt-thread
         run: |
           cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
-          set -e
           make ARCH=riscv32e-ysyxsoc init
           KEY=$(head -c 5 /dev/urandom | base32)
           python $MONITOR_PY --good=$KEY make ARCH=riscv32e-ysyxsoc run
