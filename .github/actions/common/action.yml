@@ -56,3 +56,23 @@ runs:
       shell: bash
       if: inputs.install-toolchain == 'true'
       run: sudo apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+
+    - name: Install my dependency
+      shell: bash
+      if: inputs.install-toolchain == 'true'
+      run: |
+        wget 'https://apt.llvm.org/llvm.sh' -O /tmp/llvm.sh && chmod +x /tmp/llvm.sh
+        sudo /tmp/llvm.sh 21
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-21 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-21 100
+        sudo update-alternatives --set clang /usr/bin/clang-21
+        sudo update-alternatives --set clang++ /usr/bin/clang++-21
+        clang --version
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update
+        sudo apt-get install g++-13 gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu -y
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+        sudo update-alternatives --set g++ /usr/bin/g++-13
+        g++ --version
+        gcc --version
