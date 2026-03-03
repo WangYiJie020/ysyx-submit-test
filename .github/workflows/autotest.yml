@@ -525,6 +525,9 @@ jobs:
           KEY=$(head -c 5 /dev/urandom | base32)
           IMG=$YSYX_HOME/am-kernels/benchmarks/microbench/build/microbench-riscv32e-npc.bin
           python $AM_HOME/tools/insert-arg.py $IMG 64 the_insert-arg_rule_in_Makefile_will_insert_mainargs_here $KEY
+          echo "directly running sim-iverilog"
+          make -C $NPC_HOME sim-iverilog IMG=$IMG
+          echo "running sim-iverilog with monitor"
           python $MONITOR_PY --good=$KEY make -C $NPC_HOME sim-iverilog IMG=$IMG
 
   yosys-sta:
