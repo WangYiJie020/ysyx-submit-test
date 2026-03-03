@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   parse:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       STUID:  ${{ steps.parse.outputs.STUID }}
       REPO:   ${{ steps.parse.outputs.REPO }}
@@ -495,7 +495,6 @@ jobs:
 
       - name: rt-thread
         run: |
-          set -e
           cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
           make ARCH=riscv32e-ysyxsoc init
           KEY=$(head -c 5 /dev/urandom | base32)
@@ -503,7 +502,7 @@ jobs:
 
   iverilog-microbench:
     needs: setup
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -588,7 +587,7 @@ jobs:
       - name: Parse area
         run: |
           YOSYS_LOG=yosys-sta/result/ysyx_$STUID-500MHz/yosys-fixed.log
-          AREA=`grep -o "Chip area for module .*: .*" $YOSYS_LOG | sed -e 's/.*: \([0-9]*\)\.[0-9]*$/\1/'`  # 只截取整数部分，shell 的 [[ -gt 不支持浮点数
+          AREA=`grep -o "Chip area for module .*: .*" $YOSYS_LOG | sed -e 's/.*: \([0-9]*\.[0-9]*\)$/\1/'`
           if [[ $AREA == "" ]] ; then
             echo "Can not obtain area from yosys-sta. Abort."
             false
@@ -608,7 +607,7 @@ jobs:
       - name: Parse area with older version
         run: |
           YOSYS_LOG=yosys-sta/result/ysyx_$STUID-500MHz/yosys-fixed.log
-          AREA_OLD=`grep -o "Chip area for module .*: .*" $YOSYS_LOG | sed -e 's/.*: \([0-9]*\)\.[0-9]*$/\1/'` # 只截取整数部分
+          AREA_OLD=`grep -o "Chip area for module .*: .*" $YOSYS_LOG | sed -e 's/.*: \([0-9]*\.[0-9]*\)$/\1/'`
           if [[ $AREA_OLD == "" ]] ; then
             echo "Can not obtain area from yosys-sta. Abort."
             false
