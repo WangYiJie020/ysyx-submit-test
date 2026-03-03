@@ -498,16 +498,18 @@ jobs:
           cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
           make ARCH=riscv32e-ysyxsoc init
           make ARCH=riscv32e-ysyxsoc
+          ls $YSYX_HOME/rt-thread-am/bsp/abstract-machine/build/
 
       - name: Upload build result
         uses: actions/upload-artifact@v4
         with:
            name: rt-thread-build
-           path: $YSYX_HOME/rt-thread-am/bsp/abstract-machine/build/rtthread-*
+           path: $YSYX_HOME/rt-thread-am/bsp/abstract-machine/build/
            retention-days: 5
 
       - name: rt-thread
         run: |
+          cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
           KEY=$(head -c 5 /dev/urandom | base32)
           python $MONITOR_PY --good=$KEY make ARCH=riscv32e-ysyxsoc run
 
