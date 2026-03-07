@@ -293,8 +293,9 @@ jobs:
           make dev-init
           mill __.compile
 
+          cd -
           mkdir -p $YSYX_HOME/ysyxSoC/
-          cp -r $YSYX_HOME/ysyxSoC-inited/* $YSYX_HOME/ysyxSoC/
+          cp -r ysyxSoC-inited/* $YSYX_HOME/ysyxSoC/
 
       - name: Patch ysyxSoC
         run: |
