@@ -113,13 +113,6 @@ jobs:
           echo "YSYX_HOME=$YSYX_HOME" >> $GITHUB_ENV
           echo "YSYX_HOME=$YSYX_HOME" >> $GITHUB_OUTPUT
 
-      - name: Cache oss-cad-suite
-        uses: actions/cache@v4
-        id: oss-cad-suite-cache
-        with:
-          path: oss-cad-suite
-          key: ${{ runner.os }}-oss-cad-suite-${{ env.OSS_CAD_SUITE_RELEASE_TAG }}
-
       - name: Clone target repo
         run: |
           mkdir -p $YSYX_HOME
@@ -256,16 +249,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "${{ steps.oss-cad-suite-cache.outputs.cache-hit }}" != "true" ]]; then
-            TAG=${{ steps.oss-cad-suite-tag.outputs.tag }}
-            echo "oss-cad-suite cache missed. Downloading and extracting release $TAG"
-            ASSET_NAME=$(gh release view $TAG --repo YosysHQ/oss-cad-suite-build --json assets --jq ".assets[] | select(.name | contains(\"linux-x64\")) | .name")   
-            gh release download $TAG --repo YosysHQ/oss-cad-suite-build --pattern "$ASSET_NAME"
-            tar xf $ASSET_NAME
-          fi
-          OSS_CAD_SUITE_BIN_PATH=`pwd`/oss-cad-suite/bin
-          echo "PATH=$PATH:$OSS_CAD_SUITE_BIN_PATH" >> $GITHUB_ENV
-
           mkdir -p ~/.local/bin
           MILL_VERSION=0.11.13
           if [[ -e $YSYX_HOME/npc/.mill-version ]]; then
