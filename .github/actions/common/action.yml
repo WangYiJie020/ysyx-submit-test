@@ -24,6 +24,7 @@ runs:
         tar -xzf /tmp/artifact-download/ysyx-workbench.tar.gz
 
     - name: Cache oss-cad-suite cache
+      id: oss-cad-suite-cache
       uses: actions/cache@v4
       with:
         path: oss-cad-suite
@@ -31,6 +32,8 @@ runs:
 
     - name: Download oss-cad-suite
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       if: steps.cache-oss-cad-suite.outputs.cache-hit != 'true'
       run: |
         if [[ "${{ steps.oss-cad-suite-cache.outputs.cache-hit }}" != "true" ]]; then

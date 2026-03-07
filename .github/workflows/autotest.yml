@@ -246,8 +246,6 @@ jobs:
           fi
 
       - name: Setup tools
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p ~/.local/bin
           MILL_VERSION=0.11.13
@@ -313,8 +311,6 @@ jobs:
             fi
           fi
           cd $YSYX_HOME/ysyxSoC
-          ls $YSYX_HOME/ysyxSoC
-          tree -L 2 $YSYX_HOME/ysyxSoC
           git am $YSYX_HOME/patch/ysyxSoC/*
 
       - name: Clone other repos
