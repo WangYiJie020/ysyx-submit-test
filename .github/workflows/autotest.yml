@@ -326,7 +326,7 @@ jobs:
 
       - name: Get Week Date
         id: wdate
-        run: echo "WDATE=$(date +%G-W%V)" >> $GITHUB_ENV
+        run: echo "WDATE=$(date +%G-W%V)" >> $GITHUB_OUTPUT
 
         # 缓存 NPC 的 mill 编译缓存，加速编译，
         # 以周为精度匹配，不完全匹配不影响，会自动增量编译
