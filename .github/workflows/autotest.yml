@@ -295,7 +295,7 @@ jobs:
 
           cd -
           mkdir -p $YSYX_HOME/ysyxSoC/
-          cp -r ysyxSoC-inited/* $YSYX_HOME/ysyxSoC/
+          cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
 
       - name: Patch ysyxSoC
         run: |
@@ -304,7 +304,7 @@ jobs:
             # 如果存在 ysyxSoC-inited 目录，说明初始化缓存命中了，patch 更新了导致的重新生成，直接拷贝初始化缓存加速编译
             if [[ -d ysyxSoC-inited ]]; then
               mkdir -p $YSYX_HOME/ysyxSoC/
-              cp -r ysyxSoC-inited/* $YSYX_HOME/ysyxSoC/
+              cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
             else
               cd $YSYX_HOME
               # 命中生成结果，因此不需要下载初始化缓存，直接克隆最新的代码
@@ -314,7 +314,7 @@ jobs:
           fi
           cd $YSYX_HOME/ysyxSoC
           ls $YSYX_HOME/ysyxSoC
-          tree -L 3 $YSYX_HOME/ysyxSoC
+          tree -L 2 $YSYX_HOME/ysyxSoC
           git am $YSYX_HOME/patch/ysyxSoC/*
 
       - name: Clone other repos
