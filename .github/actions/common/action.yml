@@ -33,14 +33,14 @@ runs:
       shell: bash
       run: |
         mkdir -p ~/.local/bin
-        MILL_VERSION_FILE="${{ inputs.YSYX_HOME }}/npc/.mill-version"
-        if [[ -f "$MILL_VERSION_FILE" ]]; then
-          MILL_VERSION=$(cat "$MILL_VERSION_FILE")
-          echo "Found .mill-version require $MILL_VERSION"
-          curl -L "https://github.com/com-lihaoyi/mill/releases/download/$MILL_VERSION/$MILL_VERSION" -o ~/.local/bin/mill
-          chmod +x ~/.local/bin/mill
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        MILL_VERSION=0.11.13
+        if [[ -e $YSYX_HOME/npc/.mill-version ]]; then
+          MILL_VERSION=`cat $YSYX_HOME/npc/.mill-version`
         fi
+        echo "Downloading mill with version $MILL_VERSION"
+        curl -L "https://github.com/com-lihaoyi/mill/releases/download/$MILL_VERSION/$MILL_VERSION" -o ~/.local/bin/mill
+        chmod +x ~/.local/bin/mill
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Set environment variables
       shell: bash

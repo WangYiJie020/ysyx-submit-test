@@ -252,6 +252,28 @@ jobs:
             false
           fi
 
+      - name: Setup tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${{ steps.oss-cad-suite-cache.outputs.cache-hit }}" != "true" ]]; then
+            TAG=${{ steps.oss-cad-suite-tag.outputs.tag }}
+            echo "oss-cad-suite cache missed. Downloading and extracting release $TAG"
+            ASSET_NAME=$(gh release view $TAG --repo YosysHQ/oss-cad-suite-build --json assets --jq ".assets[] | select(.name | contains(\"linux-x64\")) | .name")   
+            gh release download $TAG --repo YosysHQ/oss-cad-suite-build --pattern "$ASSET_NAME"
+            tar xf $ASSET_NAME
+          fi
+          OSS_CAD_SUITE_BIN_PATH=`pwd`/oss-cad-suite/bin
+          echo "PATH=$PATH:$OSS_CAD_SUITE_BIN_PATH" >> $GITHUB_ENV
+
+          mkdir -p ~/.local/bin
+          MILL_VERSION=0.11.13
+          if [[ -e $YSYX_HOME/npc/.mill-version ]]; then
+            MILL_VERSION=`cat $YSYX_HOME/npc/.mill-version`
+          fi
+          echo "Downloading mill with version $MILL_VERSION"
+          sh -c "curl -L https://github.com/com-lihaoyi/mill/releases/download/$MILL_VERSION/$MILL_VERSION > ~/.local/bin/mill && chmod +x ~/.local/bin/mill"
+
       - name: Get ysyxSoC tag
         id: soc-tag
         run: |
@@ -318,29 +340,6 @@ jobs:
           make -C $NEMU_HOME clean
           make -C $AM_HOME clean-all
           make -C $NPC_HOME clean
-
-      - name: Setup tools
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [[ "${{ steps.oss-cad-suite-cache.outputs.cache-hit }}" != "true" ]]; then
-            TAG=${{ steps.oss-cad-suite-tag.outputs.tag }}
-            echo "oss-cad-suite cache missed. Downloading and extracting release $TAG"
-            ASSET_NAME=$(gh release view $TAG --repo YosysHQ/oss-cad-suite-build --json assets --jq ".assets[] | select(.name | contains(\"linux-x64\")) | .name")   
-            gh release download $TAG --repo YosysHQ/oss-cad-suite-build --pattern "$ASSET_NAME"
-            tar xf $ASSET_NAME
-          fi
-          OSS_CAD_SUITE_BIN_PATH=`pwd`/oss-cad-suite/bin
-          echo "PATH=$PATH:$OSS_CAD_SUITE_BIN_PATH" >> $GITHUB_ENV
-
-          mkdir -p ~/.local/bin
-          MILL_VERSION=0.11.13
-          if [[ -e $YSYX_HOME/npc/.mill-version ]]; then
-            MILL_VERSION=`cat $YSYX_HOME/npc/.mill-version`
-          fi
-          echo "Downloading mill with version $MILL_VERSION"
-          sh -c "curl -L https://github.com/com-lihaoyi/mill/releases/download/$MILL_VERSION/$MILL_VERSION > ~/.local/bin/mill && chmod +x ~/.local/bin/mill"
-          mill --version
 
       - name: Generate verilog for NPC
         run: |
