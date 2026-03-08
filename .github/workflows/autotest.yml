@@ -374,8 +374,10 @@ jobs:
 
       - name: Check verilog top module name
         run: |
+          set -e
           VFILE=${{ steps.vfilename.outputs.VFILE }}
-          STR="$(cat $VFILE | tr '\n' ' ' | grep -E \"module\s+ysyx_$STUID\")"
+          TR_STR="$(cat $VFILE | tr '\n' ' ')"
+          STR="echo $TR_STR | grep -E \"module\s+ysyx_$STUID\")"
           if [[ $STR == "" ]]; then
             echo "Can not find module ysyx_$STUID in $VFILE. Abort."
             false
