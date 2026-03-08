@@ -177,3 +177,10 @@ for i, student in enumerate(remaining_students):
 print(f"\n全部 {len(students)} 位学员已触发CI！")
 print(f"请查看 issue #{issue_number} 的评论来跟踪各学员的CI结果。")
 print(f"Issue URL: {issue_url}")
+
+# Write step outputs for subsequent steps
+github_output = os.environ.get('GITHUB_OUTPUT', '')
+if github_output:
+    with open(github_output, 'a') as f:
+        f.write(f"ISSUE_NUMBER={issue_number}\n")
+        f.write(f"NUM_STUDENTS={len(students)}\n")

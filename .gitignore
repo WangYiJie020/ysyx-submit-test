@@ -10,3 +10,5 @@
 !README.md
 !.gitignore
 !init.sh
+!retest_upstream.py
+!monitor_retest.py

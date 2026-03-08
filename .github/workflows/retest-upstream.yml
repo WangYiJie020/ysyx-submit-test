@@ -19,15 +19,23 @@ on:
         options:
           - auto
           - embedded
+      timeout_minutes:
+        description: '触发CI后监控超时时间（分钟），超时后取消所有未结束的流程'
+        required: false
+        default: '20'
 
 permissions:
   issues: write
+  actions: write
 
 jobs:
   retest:
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
       - name: Fetch upstream issues and trigger CI for each student
+        id: trigger
         env:
           GH_TOKEN: ${{ secrets.RETEST_GH_TOKEN }}
           REPO: ${{ github.repository }}
@@ -36,3 +44,14 @@ jobs:
           SOURCE: ${{ inputs.source }}
         run: |
           python3 `pwd`/retest_upstream.py
+
+      - name: Monitor CI progress and post summary
+        if: steps.trigger.outputs.ISSUE_NUMBER != ''
+        env:
+          GH_TOKEN: ${{ secrets.RETEST_GH_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.trigger.outputs.ISSUE_NUMBER }}
+          NUM_STUDENTS: ${{ steps.trigger.outputs.NUM_STUDENTS }}
+          TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
+        run: |
+          python3 `pwd`/monitor_retest.py
