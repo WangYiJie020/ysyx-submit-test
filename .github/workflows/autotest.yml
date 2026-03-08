@@ -315,7 +315,7 @@ jobs:
 
       - name: Patch ysyxSoC
         run: |
-          if [[ ${{ steps.soc-verilog-cache.outputs.cache-hit }} != "true" ]]; then
+          if [[ "${{ steps.soc-verilog-cache.outputs.cache-hit }}" != "true" ]]; then
             mkdir -p $YSYX_HOME/ysyxSoC/
             cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
           else
