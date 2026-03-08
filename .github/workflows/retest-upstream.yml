@@ -1,0 +1,260 @@
+name: Retest Upstream Students
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_stuids:
+        description: '跳过的学号（逗号分隔，默认跳过已测过的）'
+        required: false
+        default: ''
+      delay_seconds:
+        description: '每个学员之间的等待时间（秒）'
+        required: false
+        default: '30'
+      source:
+        description: '数据来源：auto=自动从上游读取, embedded=使用内嵌数据'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - embedded
+
+permissions:
+  issues: write
+
+jobs:
+  retest:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Fetch upstream issues and trigger CI for each student
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SKIP_STUIDS: ${{ inputs.skip_stuids }}
+          DELAY_SECONDS: ${{ inputs.delay_seconds }}
+          SOURCE: ${{ inputs.source }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, subprocess, sys, time
+          from datetime import datetime, timezone
+
+          REPO = os.environ['REPO']
+          DELAY = int(os.environ.get('DELAY_SECONDS', '30'))
+          SOURCE = os.environ.get('SOURCE', 'auto')
+          skip_raw = os.environ.get('SKIP_STUIDS', '').strip()
+          skip_stuids = set(s.strip() for s in skip_raw.split(',') if s.strip())
+
+          print(f"Source: {SOURCE}")
+          print(f"Skip STUIDs: {skip_stuids or '(none)'}")
+          print(f"Delay between students: {DELAY}s")
+
+          # ========================================================
+          # 内嵌数据 (embedded): 上游2025年10月1日起关闭的issue中
+          # 每位学员的最新提交
+          # ========================================================
+          EMBEDDED_STUDENTS = [
+            {
+              "stuid": "23060229",
+              "upstream": 58,
+              "body": "### 一生一芯学号\n\n23060229\n\n### 仓库URL\n\nhttps://github.com/Jason-Young123/ysyx_23060229_Bstage\n\n### 分支名\n\nmaster\n\n### 注释\n\nmy submission\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24070003",
+              "upstream": 88,
+              "body": "### 一生一芯学号\n\n24070003\n\n### 仓库URL\n\nhttps://github.com/jiang211/ysyx.git\n\n### 分支名\n\nysyx-b-stage-chip\n\n### 注释\n\n绝对路径\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24080032",
+              "upstream": 85,
+              "body": "### 一生一芯学号\n\n24080032\n\n### 仓库URL\n\nhttps://github.com/PengchengYang-xdu/ysyx_24080032_new_ci\n\n### 分支名\n\nnew_ci\n\n### 注释\n\n12月23日重新提交\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24100006",
+              "upstream": 63,
+              "body": "### 一生一芯学号\n\n24100006\n\n### 仓库URL\n\nhttps://github.com/LQ0623/ysyx\n\n### 分支名\n\nci-test\n\n### 注释\n\n第四次提交，修复网表仿真，将CPU访问内存的地址最直接去除高4位，这样的话就不用管出来的地址是0x3000_0000还是0x8000_0000了，因为综合的时候起始地址为0x3000_0000，但是网表仿真的时候为0x8000_0000，所以需要忽略高4位\n\n第三次提交，更换网表，修完fence.i没有替换网表文件\n\n第二次提交，修复fence.i的bug\n\n第一次提交\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24100012",
+              "upstream": 78,
+              "body": "### 一生一芯学号\n\n24100012\n\n### 仓库URL\n\nhttps://github.com/kuikuikuizzZ/ysyx-workbench\n\n### 分支名\n\nB5\n\n### 注释\n\nB5\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24110017",
+              "upstream": 65,
+              "body": "### 一生一芯学号\n\n24110017\n\n### 仓库URL\n\nhttps://github.com/dongfengjun/dongfengjun.git\n\n### 分支名\n\nCI\n\n### 注释\n\n重新提交5.13\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "24120011",
+              "upstream": 75,
+              "body": "### 一生一芯学号\n\n24120011\n\n### 仓库URL\n\nhttps://github.com/Plutoisy/ysyx-workbench\n\n### 分支名\n\ndev\n\n### 注释\n\nci\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25010008",
+              "upstream": 69,
+              "body": "### 一生一芯学号\n\n25010008\n\n### 仓库URL\n\nhttps://github.com/AfalpHy/ysyx-workbench\n\n### 分支名\n\nB_stage_test\n\n### 注释\n\n第一次提交\n第二次提交\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25010030",
+              "upstream": 74,
+              "body": "### 一生一芯学号\n\n25010030\n\n### 仓库URL\n\nhttps://github.com/Furina318/ysyx-Learning\n\n### 分支名\n\nysyx-B\n\n### 注释\n\nfix soc path size1\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25020037",
+              "upstream": 71,
+              "body": "### 一生一芯学号\n\n25020037\n\n### 仓库URL\n\nhttps://github.com/tanghongwei8763/my_ysyx-workbench\n\n### 分支名\n\nysyx-b-stage-chip\n\n### 注释\n\n2\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25020039",
+              "upstream": 91,
+              "body": "### 一生一芯学号\n\n25020039\n\n### 仓库URL\n\nhttps://github.com/Ymaple17/ysyx-workbench\n\n### 分支名\n\nci\n\n### 注释\n\n第三十三次提交-修复ebreak的仿真问题(5)\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25040111",
+              "upstream": 77,
+              "body": "### 一生一芯学号\n\n25040111\n\n### 仓库URL\n\nhttps://github.com/Dallous52/ysyx-workbench.git\n\n### 分支名\n\nmain\n\n### 注释\n\n第一次\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25040129",
+              "upstream": 55,
+              "body": "### 一生一芯学号\n\n25040129\n\n### 仓库URL\n\nhttps://github.com/PingGuoLiZiJvZi/ysyx-workbench3.git\n\n### 分支名\n\nmaster\n\n### 注释\n\n第一次提交\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25050136",
+              "upstream": 87,
+              "body": "### 一生一芯学号\n\n25050136\n\n### 仓库URL\n\nhttps://github.com/hai1223a/ysyxexam.git\n\n### 分支名\n\nBstage\n\n### 注释\n\n第一次失败后改版bianhua\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            },
+            {
+              "stuid": "25080222",
+              "upstream": 83,
+              "body": "### 一生一芯学号\n\n25080222\n\n### 仓库URL\n\nhttps://gitee.com/cloud_hxw/ysyx-workbench\n\n### 分支名\n\nCI\n\n### 注释\n\nitrace\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
+            }
+          ]
+
+          def fetch_upstream_issues():
+              """从上游仓库自动读取2025年10月1日起的关闭issue"""
+              import urllib.request, urllib.error
+              print("正在从上游仓库 sashimi-yzh/ysyx-submit-test 读取关闭的issue...")
+              url = "https://api.github.com/repos/sashimi-yzh/ysyx-submit-test/issues?state=closed&since=2025-10-01T00:00:00Z&per_page=100"
+              req = urllib.request.Request(url, headers={
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28'
+              })
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      issues = json.loads(resp.read())
+                  print(f"获取到 {len(issues)} 个issue")
+                  return issues
+              except Exception as e:
+                  print(f"获取上游issue失败: {e}")
+                  return None
+
+          def extract_unique_students(issues):
+              """提取每位学员的最新提交"""
+              target_date = datetime(2025, 10, 1, tzinfo=timezone.utc)
+              students = {}
+              for issue in issues:
+                  body = issue.get('body', '')
+                  if not body:
+                      continue
+                  created = datetime.fromisoformat(
+                      issue['created_at'].replace('Z', '+00:00')
+                  )
+                  if created < target_date:
+                      continue
+                  lines = body.split('\n')
+                  stuid = lines[2].strip() if len(lines) > 2 else ''
+                  if stuid and stuid not in students:
+                      students[stuid] = {
+                          'stuid': stuid,
+                          'upstream': issue['number'],
+                          'body': body
+                      }
+              return list(students.values())
+
+          # 决定数据来源
+          if SOURCE == 'auto':
+              upstream_issues = fetch_upstream_issues()
+              if upstream_issues:
+                  students = extract_unique_students(upstream_issues)
+                  print(f"自动模式: 找到 {len(students)} 位学员")
+              else:
+                  print("自动获取失败，回退到内嵌数据")
+                  students = EMBEDDED_STUDENTS
+          else:
+              print("使用内嵌数据")
+              students = EMBEDDED_STUDENTS
+
+          # 过滤跳过的学号
+          students = [s for s in students if s['stuid'] not in skip_stuids]
+          print(f"将测试 {len(students)} 位学员: {[s['stuid'] for s in students]}")
+
+          if not students:
+              print("没有需要测试的学员，退出")
+              sys.exit(0)
+
+          # 生成issue的初始说明
+          student_list = '\n'.join(
+              f"- {s['stuid']} (upstream #{s['upstream']})"
+              for s in sorted(students, key=lambda x: x['stuid'])
+          )
+          initial_body = f"""# Retest: Upstream Students CI
+
+          本issue用于重新测试上游仓库 sashimi-yzh/ysyx-submit-test 中
+          2025年10月1日起关闭的issue所对应的学员CI流程。
+
+          **测试目的**: 验证workflow修改是否影响了之前通过的测试。
+          **注意**: 之前yosys-sta面积检查有bug（所有面积都通过），现已修复，
+          部分之前通过的提交可能因面积超标而失败。
+
+          ## 待测学员列表
+          {student_list}
+
+          正在初始化，即将逐一替换body来触发各学员的CI...
+          """
+
+          # 创建测试issue
+          print("\n正在创建测试issue...")
+          result = subprocess.run(
+              ['gh', 'issue', 'create',
+               '--repo', REPO,
+               '--title', 'Retest: 重测上游2025-10-01起的关闭issue（CI验证）',
+               '--body', initial_body],
+              capture_output=True, text=True, check=True
+          )
+          issue_url = result.stdout.strip()
+          issue_number = issue_url.split('/')[-1]
+          print(f"创建了测试issue #{issue_number}: {issue_url}")
+
+          # 等待一小段时间让issue稳定
+          time.sleep(5)
+
+          # 逐一替换issue body来触发各学员的CI
+          print(f"\n开始逐一触发各学员CI（每次间隔{DELAY}秒）...")
+          for i, student in enumerate(sorted(students, key=lambda x: x['stuid'])):
+              stuid = student['stuid']
+              upstream_num = student['upstream']
+              body = student['body']
+
+              print(f"\n[{i+1}/{len(students)}] 触发学员 {stuid} 的CI (上游issue #{upstream_num})...")
+
+              result = subprocess.run(
+                  ['gh', 'issue', 'edit', issue_number,
+                   '--repo', REPO,
+                   '--body', body],
+                  capture_output=True, text=True
+              )
+
+              if result.returncode != 0:
+                  print(f"  错误: {result.stderr}")
+              else:
+                  print(f"  成功触发学员 {stuid} 的CI")
+
+              if i < len(students) - 1 and DELAY > 0:
+                  print(f"  等待 {DELAY}s 后继续...")
+                  time.sleep(DELAY)
+
+          print(f"\n全部 {len(students)} 位学员已触发CI！")
+          print(f"请查看 issue #{issue_number} 的评论来跟踪各学员的CI结果。")
+          print(f"Issue URL: {issue_url}")
+          PYEOF
