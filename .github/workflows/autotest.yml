@@ -320,6 +320,7 @@ jobs:
             mkdir -p $YSYX_HOME/ysyxSoC/
             cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
           else
+            cd $YSYX_HOME
             # 命中生成结果，不需要初始化的缓存，直接克隆不传递初始化的缓存
             git clone --depth 1 -b ysyx6 https://github.com/OSCPU/ysyxSoC
           fi
