@@ -347,7 +347,7 @@ jobs:
           make -C $AM_HOME clean-all
           make -C $NPC_HOME clean
 
-      # TODO: 考虑优化使用 Chisel 的学员生成 verilog 的流程
+        # TODO: 考虑优化使用 Chisel 的学员生成 verilog 的流程
       - name: Generate verilog for NPC
         run: |
           touch $NPC_HOME/.timestamp
@@ -398,7 +398,7 @@ jobs:
           CACHED_SOC_VERILOG_DIR=`pwd`/ysyxSoC-verilog
           if [[ "${{ steps.soc-verilog-cache.outputs.cache-hit }}" == "true" ]]; then
             mkdir -p $YSYX_HOME/ysyxSoC/build
-            cp $CACHED_SOC_VERILOG_DIR/* $YSYX_HOME/ysyxSoC/build
+            cp -a $CACHED_SOC_VERILOG_DIR/. $YSYX_HOME/ysyxSoC/build
             if [[ ! -f $YSYX_HOME/ysyxSoC/build/ysyxSoCFull.v ]]; then
               echo "Cached verilog file does not exist. Abort."
               false
@@ -406,7 +406,7 @@ jobs:
           else
             make -C $YSYX_HOME/ysyxSoC verilog
             mkdir -p $CACHED_SOC_VERILOG_DIR
-            cp $YSYX_HOME/ysyxSoC/build/* $CACHED_SOC_VERILOG_DIR
+            cp -a $YSYX_HOME/ysyxSoC/build/. $CACHED_SOC_VERILOG_DIR
           fi
 
       - name: Upload verilog file
