@@ -366,10 +366,16 @@ jobs:
 
           echo "VFILE=$VFILE" >> $GITHUB_OUTPUT
 
+      - name: Upload VFILE
+        uses: actions/upload-artifact@v4
+        with:
+          name: vfile
+          path: ${{ steps.vfilename.outputs.VFILE }}
+
       - name: Check verilog top module name
         run: |
           VFILE=${{ steps.vfilename.outputs.VFILE }}
-          STR=`cat $VFILE | tr '\n' ' ' | grep -E "module\s+ysyx_$STUID" 2> /dev/null`
+          STR="$(cat $VFILE | tr '\n' ' ' | grep -E \"module\s+ysyx_$STUID\")"
           if [[ $STR == "" ]]; then
             echo "Can not find module ysyx_$STUID in $VFILE. Abort."
             false
