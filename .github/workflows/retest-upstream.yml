@@ -193,50 +193,37 @@ jobs:
               print("没有需要测试的学员，退出")
               sys.exit(0)
 
-          # 生成issue的初始说明
-          student_list = '\n'.join(
-              f"- {s['stuid']} (upstream #{s['upstream']})"
-              for s in sorted(students, key=lambda x: x['stuid'])
-          )
-          initial_body = f"""# Retest: Upstream Students CI
+          # 按学号排序
+          sorted_students = sorted(students, key=lambda x: x['stuid'])
+          first_student = sorted_students[0]
+          remaining_students = sorted_students[1:]
 
-          本issue用于重新测试上游仓库 sashimi-yzh/ysyx-submit-test 中
-          2025年10月1日起关闭的issue所对应的学员CI流程。
-
-          **测试目的**: 验证workflow修改是否影响了之前通过的测试。
-          **注意**: 之前yosys-sta面积检查有bug（所有面积都通过），现已修复，
-          部分之前通过的提交可能因面积超标而失败。
-
-          ## 待测学员列表
-          {student_list}
-
-          正在初始化，即将逐一替换body来触发各学员的CI...
-          """
-
-          # 创建测试issue
-          print("\n正在创建测试issue...")
+          # 用第一个学员的body作为issue初始内容（直接触发CI，避免空body触发无效run）
+          print(f"\n正在创建测试issue（初始body为学员 {first_student['stuid']}）...")
           result = subprocess.run(
               ['gh', 'issue', 'create',
                '--repo', REPO,
                '--title', 'Retest: 重测上游2025-10-01起的关闭issue（CI验证）',
-               '--body', initial_body],
+               '--body', first_student['body']],
               capture_output=True, text=True, check=True
           )
           issue_url = result.stdout.strip()
           issue_number = issue_url.split('/')[-1]
           print(f"创建了测试issue #{issue_number}: {issue_url}")
-
-          # 等待一小段时间让issue稳定
-          time.sleep(5)
+          print(f"触发了学员 {first_student['stuid']} (上游issue #{first_student['upstream']}) 的CI")
 
           # 逐一替换issue body来触发各学员的CI
-          print(f"\n开始逐一触发各学员CI（每次间隔{DELAY}秒）...")
-          for i, student in enumerate(sorted(students, key=lambda x: x['stuid'])):
+          print(f"\n开始逐一触发剩余学员CI（每次间隔{DELAY}秒）...")
+          for i, student in enumerate(remaining_students):
               stuid = student['stuid']
               upstream_num = student['upstream']
               body = student['body']
 
-              print(f"\n[{i+1}/{len(students)}] 触发学员 {stuid} 的CI (上游issue #{upstream_num})...")
+              if DELAY > 0:
+                  print(f"  等待 {DELAY}s 后触发下一位学员...")
+                  time.sleep(DELAY)
+
+              print(f"\n[{i+2}/{len(sorted_students)}] 触发学员 {stuid} 的CI (上游issue #{upstream_num})...")
 
               result = subprocess.run(
                   ['gh', 'issue', 'edit', issue_number,
@@ -249,10 +236,6 @@ jobs:
                   print(f"  错误: {result.stderr}")
               else:
                   print(f"  成功触发学员 {stuid} 的CI")
-
-              if i < len(students) - 1 and DELAY > 0:
-                  print(f"  等待 {DELAY}s 后继续...")
-                  time.sleep(DELAY)
 
           print(f"\n全部 {len(students)} 位学员已触发CI！")
           print(f"请查看 issue #{issue_number} 的评论来跟踪各学员的CI结果。")
