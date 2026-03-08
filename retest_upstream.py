@@ -47,11 +47,6 @@ EMBEDDED_STUDENTS = [
   "body": "### 一生一芯学号\n\n25010008\n\n### 仓库URL\n\nhttps://github.com/AfalpHy/ysyx-workbench\n\n### 分支名\n\nB_stage_test\n\n### 注释\n\n第一次提交\n第二次提交\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
 },
 {
-  "stuid": "25010030",
-  "upstream": 74,
-  "body": "### 一生一芯学号\n\n25010030\n\n### 仓库URL\n\nhttps://github.com/Furina318/ysyx-Learning\n\n### 分支名\n\nysyx-B\n\n### 注释\n\nfix soc path size1\n\n### make参数\n\n- [x] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
-},
-{
   "stuid": "25020039",
   "upstream": 91,
   "body": "### 一生一芯学号\n\n25020039\n\n### 仓库URL\n\nhttps://github.com/Ymaple17/ysyx-workbench\n\n### 分支名\n\nci\n\n### 注释\n\n第三十三次提交-修复ebreak的仿真问题(5)\n\n### make参数\n\n- [ ] 不使用'-j'参数, 若cpu-tests等测试由于该参数而失败, 可以勾选此项"
