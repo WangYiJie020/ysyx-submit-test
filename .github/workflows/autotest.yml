@@ -347,40 +347,11 @@ jobs:
           make -C $AM_HOME clean-all
           make -C $NPC_HOME clean
 
-      - name: Get Week Date
-        id: wdate
-        run: echo "WDATE=$(date +%G-W%V)" >> $GITHUB_OUTPUT
-
-        # 缓存 NPC 的 mill 编译缓存，加速编译，
-        # 以周为精度匹配，不完全匹配不影响，会自动增量编译
-        #
-        # 仅考虑学员的 mill 缓存在 YSYX_HOME/npc/out
-        # 若放在在其他目录下暂不支持识别
-      - name: Cache NPC mill out
-        id: npc-mill-cache
-        uses: actions/cache@v4
-        with:
-          path: npc-mill-out
-          key: ${{ runner.os }}-npc-mill-out-${{ needs.parse.outputs.STUID }}-${{ steps.wdate.outputs.WDATE }}
-          restore-keys: |
-            ${{ runner.os }}-npc-mill-out-${{ needs.parse.outputs.STUID }}-
-
+      # TODO: 考虑优化使用 Chisel 的学员生成 verilog 的流程
       - name: Generate verilog for NPC
         run: |
-          if [[ "${{ steps.npc-mill-cache.outputs.cache-hit }}" == "true" ]]; then
-            echo "Try restore mill out from cache"
-            mkdir -p $NPC_HOME/out
-            cp -a npc-mill-out/. $NPC_HOME/out/
-          fi
           touch $NPC_HOME/.timestamp
           make -C $NPC_HOME verilog
-          if [[ "${{ steps.npc-mill-cache.outputs.cache-hit }}" != "true" ]]; then
-            if [[ -d $NPC_HOME/out ]]; then
-              echo "Detect mill out dir after generattion, saving to cache"
-              mkdir -p npc-mill-out
-              cp -a $NPC_HOME/out/. npc-mill-out/
-            fi
-          fi
 
       - name: Check verilog file name
         id: vfilename
