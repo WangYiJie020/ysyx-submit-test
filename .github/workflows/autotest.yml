@@ -314,24 +314,14 @@ jobs:
           make dev-init
           mill __.compile
 
-          cd -
-          mkdir -p $YSYX_HOME/ysyxSoC/
-          cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
-
       - name: Patch ysyxSoC
         run: |
-          # 如果存在 ysyxSoC 目录，说明是第一次全新初始化，已经由 Init 拷贝了
-          if [[ ! -d $YSYX_HOME/ysyxSoC ]]; then
-            # 如果存在 ysyxSoC-inited 目录，说明初始化缓存命中了，patch 更新了导致的重新生成，直接拷贝初始化缓存加速编译
-            if [[ -d ysyxSoC-inited ]]; then
-              mkdir -p $YSYX_HOME/ysyxSoC/
-              cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
-            else
-              cd $YSYX_HOME
-              # 命中生成结果，因此不需要下载初始化缓存，直接克隆最新的代码
-              # 打上 patch 供后续使用
-              git clone --depth 1 -b ysyx6 https://github.com/OSCPU/ysyxSoC
-            fi
+          if [[ ${{ steps.soc-verilog-cache.outputs.cache-hit }} != "true" ]]; then
+            mkdir -p $YSYX_HOME/ysyxSoC/
+            cp -a ysyxSoC-inited/. $YSYX_HOME/ysyxSoC/
+          else
+            # 命中生成结果，不需要初始化的缓存，直接克隆不传递初始化的缓存
+            git clone --depth 1 -b ysyx6 https://github.com/OSCPU/ysyxSoC
           fi
           cd $YSYX_HOME/ysyxSoC
           git am $YSYX_HOME/patch/ysyxSoC/*
