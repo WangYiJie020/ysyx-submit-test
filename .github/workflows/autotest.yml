@@ -539,11 +539,17 @@ jobs:
         run: sudo apt install -y scons
 
       - name: rt-thread
+        id: rt_thread_test
         run: |
           cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
           make ARCH=riscv32e-ysyxsoc init
           KEY=$(head -c 5 /dev/urandom | base32)
           python $MONITOR_PY --good=$KEY make ARCH=riscv32e-ysyxsoc run
+
+      - name: Setup tmate session on rt-thread failure
+        if: ${{ failure() && steps.rt_thread_test.outcome == 'failure' }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 60
 
   iverilog-microbench:
     needs: setup
