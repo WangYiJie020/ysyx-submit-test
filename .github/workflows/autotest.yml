@@ -550,6 +550,8 @@ jobs:
         if: ${{ failure() && steps.rt_thread_test.outcome == 'failure' }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 60
+        with:
+          limit-access-to-actor: false
 
   iverilog-microbench:
     needs: setup
