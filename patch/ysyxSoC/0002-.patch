@@ -1,0 +1,46 @@
+From 9e6ad8f24d4195e4552b2778384013d81a7c8160 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E7=8E=8B=E5=AD=90=E5=8D=BF?= <wang_ph@sjtu.edu.cn>
+Date: Tue, 5 Aug 2025 16:35:40 +0800
+Subject: [PATCH 2/2] =?UTF-8?q?=E5=8F=96=E6=B6=88=E4=B8=B2=E5=8F=A3?=
+ =?UTF-8?q?=E8=BE=93=E5=87=BA?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ perip/uart16550/rtl/uart_tfifo.v | 4 ++--
+ rocket-chip                      | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/perip/uart16550/rtl/uart_tfifo.v b/perip/uart16550/rtl/uart_tfifo.v
+index 71329116..b788bc2d 100644
+--- a/perip/uart16550/rtl/uart_tfifo.v
++++ b/perip/uart16550/rtl/uart_tfifo.v
+@@ -211,7 +211,7 @@ begin
+             begin
+                 top   <= #1 top_plus_1;
+                 count <= #1 count + 1'b1;
+-                $write("%c", data_in);
++                //$write("%c", data_in);
+             end
+         2'b01 : if(count>0)
+             begin
+@@ -221,7 +221,7 @@ begin
+         2'b11 : begin
+                 bottom <= #1 bottom + 1'b1;
+                 top    <= #1 top_plus_1;
+-                $write("%c", data_in);
++                //$write("%c", data_in);
+                 end
+         default: ;
+         endcase
+diff --git a/rocket-chip b/rocket-chip
+index d0c6b50f..dbcb06af 160000
+--- a/rocket-chip
++++ b/rocket-chip
+@@ -1 +1 @@
+-Subproject commit d0c6b50fdefcdbe121e9788433ea51f7efaf1d32
++Subproject commit dbcb06afe1c76d1129cb6d264949322a34c37185
+-- 
+2.34.1
+

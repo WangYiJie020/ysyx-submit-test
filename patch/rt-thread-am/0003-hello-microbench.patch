@@ -1,0 +1,31 @@
+From d5ca462c92226daf893c51070f556c3e6db18fb4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E7=8E=8B=E5=AD=90=E5=8D=BF?= <wang_ph@sjtu.edu.cn>
+Date: Tue, 7 Jul 2026 20:19:15 +0800
+Subject: [PATCH 3/3] =?UTF-8?q?=E6=B7=BB=E5=8A=A0hello=E5=92=8Cmicrobench?=
+ =?UTF-8?q?=E7=A8=8B=E5=BA=8F?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ bsp/abstract-machine/integrate-am-apps.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/bsp/abstract-machine/integrate-am-apps.py b/bsp/abstract-machine/integrate-am-apps.py
+index ef5e4361b..fec3b7884 100644
+--- a/bsp/abstract-machine/integrate-am-apps.py
++++ b/bsp/abstract-machine/integrate-am-apps.py
+@@ -7,8 +7,8 @@ from pathlib import Path
+ AM_HOME = Path(os.environ["AM_HOME"])
+ AM_KERNELS_HOME = (AM_HOME / ".." / "am-kernels").resolve()
+ app_dir_list = [
+-#  AM_KERNELS_HOME / "kernels" / "hello",
+-#  AM_KERNELS_HOME / "benchmarks" / "microbench",
++  AM_KERNELS_HOME / "kernels" / "hello",
++  AM_KERNELS_HOME / "benchmarks" / "microbench",
+   AM_KERNELS_HOME / "kernels" / "typing-game",
+   AM_KERNELS_HOME / "kernels" / "snake",
+ #  AM_KERNELS_HOME / ".." / "fceux-am",
+-- 
+2.34.1
+

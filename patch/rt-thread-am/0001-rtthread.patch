@@ -1,0 +1,137 @@
+From 9e72b6422b0f4f1385a74959b958a0a6e3570ed9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E7=8E=8B=E5=AD=90=E5=8D=BF?= <wang_ph@sjtu.edu.cn>
+Date: Mon, 6 Jul 2026 22:44:19 +0800
+Subject: [PATCH 1/3] =?UTF-8?q?=E5=AE=8C=E6=88=90rtthread=E7=9B=B8?=
+ =?UTF-8?q?=E5=85=B3=E5=86=85=E5=AE=B9?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ bsp/abstract-machine/Makefile             |  3 +++
+ bsp/abstract-machine/integrate-am-apps.py |  6 ++---
+ bsp/abstract-machine/src/context.c        | 31 ++++++++++++++++++++---
+ bsp/abstract-machine/src/uart.c           |  3 ++-
+ 4 files changed, 35 insertions(+), 8 deletions(-)
+
+diff --git a/bsp/abstract-machine/Makefile b/bsp/abstract-machine/Makefile
+index 8d70f310b..c775bb1da 100644
+--- a/bsp/abstract-machine/Makefile
++++ b/bsp/abstract-machine/Makefile
+@@ -8,11 +8,14 @@ NAME = rtthread
+ SRCS = $(shell find src -name "*.c")
+ CFLAGS += -DHAVE_CCONFIG_H -D__RTTHREAD__
+ CFLAGS += -Wno-nonnull-compare
++ifneq ($(word 2,$(subst -, ,$(ARCH))),ysyxsoc)
+ LDFLAGS += -T extra.ld
++endif
+ -include $(FILE_MK)
+ -include $(AM_APPS_MK)
+ include $(AM_HOME)/Makefile
+ 
++
+ $(RTCONFIG_H):
+ 	touch $@
+ 	scons --useconfig=.config
+diff --git a/bsp/abstract-machine/integrate-am-apps.py b/bsp/abstract-machine/integrate-am-apps.py
+index 8968df387..ef5e4361b 100644
+--- a/bsp/abstract-machine/integrate-am-apps.py
++++ b/bsp/abstract-machine/integrate-am-apps.py
+@@ -7,11 +7,11 @@ from pathlib import Path
+ AM_HOME = Path(os.environ["AM_HOME"])
+ AM_KERNELS_HOME = (AM_HOME / ".." / "am-kernels").resolve()
+ app_dir_list = [
+-  AM_KERNELS_HOME / "kernels" / "hello",
+-  AM_KERNELS_HOME / "benchmarks" / "microbench",
++#  AM_KERNELS_HOME / "kernels" / "hello",
++#  AM_KERNELS_HOME / "benchmarks" / "microbench",
+   AM_KERNELS_HOME / "kernels" / "typing-game",
+   AM_KERNELS_HOME / "kernels" / "snake",
+-  AM_KERNELS_HOME / ".." / "fceux-am",
++#  AM_KERNELS_HOME / ".." / "fceux-am",
+ ]
+ 
+ if len(sys.argv) != 3:
+diff --git a/bsp/abstract-machine/src/context.c b/bsp/abstract-machine/src/context.c
+index ee38829ae..79b9fe40e 100644
+--- a/bsp/abstract-machine/src/context.c
++++ b/bsp/abstract-machine/src/context.c
+@@ -2,8 +2,12 @@
+ #include <klib.h>
+ #include <rtthread.h>
+ 
++static rt_ubase_t _from, _to;
++
+ static Context* ev_handler(Event e, Context *c) {
+   switch (e.event) {
++		case EVENT_YIELD: if (_from) {*(Context **)_from = c;} c = *(Context **)_to; break;
++		case EVENT_IRQ_TIMER: case EVENT_IRQ_IODEV: break;
+     default: printf("Unhandled event ID = %d\n", e.event); assert(0);
+   }
+   return c;
+@@ -14,18 +18,37 @@ void __am_cte_init() {
+ }
+ 
+ void rt_hw_context_switch_to(rt_ubase_t to) {
+-  assert(0);
++  _to = to;
++	yield();
+ }
+ 
+ void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to) {
+-  assert(0);
++  _to = to;
++	_from = from;
++	yield();
+ }
+ 
+ void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from, rt_ubase_t to, struct rt_thread *to_thread) {
+   assert(0);
+ }
+ 
++void packed(void *packed_args) {
++	void **_packed_args = (void **)packed_args;
++	void (*_tentry)(void *parameter) = (void (*)(void *))_packed_args[0];
++	void *parameter = _packed_args[1];
++	void (*_texit)(void) = (void (*)(void))_packed_args[2];
++	_tentry(parameter);
++	_texit();
++}
++
+ rt_uint8_t *rt_hw_stack_init(void *tentry, void *parameter, rt_uint8_t *stack_addr, void *texit) {
+-  assert(0);
+-  return NULL;
++	stack_addr = (rt_uint8_t *)((~(sizeof(uintptr_t) - 1)) & (unsigned long)stack_addr);
++	Area kstack;
++	kstack.end = (void *)stack_addr - 3 * sizeof(void *);
++	void **packed_args = (void **)kstack.end;
++	Context *cp = kcontext(kstack, (void (*)(void *))packed, (void *)packed_args);
++	packed_args[0] = tentry;
++	packed_args[1] = parameter;
++	packed_args[2] = texit;
++	return (rt_uint8_t *)cp;
+ }
+diff --git a/bsp/abstract-machine/src/uart.c b/bsp/abstract-machine/src/uart.c
+index e4eb86689..310e56cd1 100644
+--- a/bsp/abstract-machine/src/uart.c
++++ b/bsp/abstract-machine/src/uart.c
+@@ -11,6 +11,7 @@
+ #include <rtthread.h>
+ #include <am.h>
+ #include <klib.h>
++#include <klib-macros.h>
+ 
+ #define UART_DEFAULT_BAUDRATE 115200
+ 
+@@ -38,7 +39,7 @@ static int _uart_putc(struct rt_serial_device *serial, char c) {
+ 
+ static int _uart_getc(struct rt_serial_device *serial) {
+   static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\n";
+-  return (*p != '\0' ? *(p ++) : -1);
++  return (*p != '\0' ? *(p ++) : -1/*io_read(AM_UART_RX).data*/);
+ }
+ 
+ const struct rt_uart_ops _uart_ops = {
+-- 
+2.34.1
+
