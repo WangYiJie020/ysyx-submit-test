@@ -130,6 +130,8 @@ jobs:
   setup:
     needs: parse
     runs-on: ubuntu-22.04
+    env:
+      STUID: ${{ needs.parse.outputs.STUID }}
     outputs:
       YSYX_HOME: ${{ steps.set-ysyx-home.outputs.YSYX_HOME }}
       VFILE:     ${{ steps.vfilename.outputs.VFILE }}
@@ -139,12 +141,6 @@ jobs:
         run: |
           git config --global user.email "ci@ysyx.org"
           git config --global user.name "ysyx-ci"
-
-      - name: Set student ID as environment variable
-        env:
-          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
-        run: |
-          echo "STUID=$PARSE_STUID" >> $GITHUB_ENV
 
       - name: Check branch
         env:
@@ -643,6 +639,9 @@ jobs:
   yosys-sta:
     needs: [parse, setup]
     runs-on: ubuntu-22.04
+    env:
+      STUID: ${{ needs.parse.outputs.STUID }}
+      VFILE: ${{ needs.setup.outputs.VFILE }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -669,13 +668,6 @@ jobs:
       - name: Generate Verilog
         run: |
           make -C $NPC_HOME verilog
-
-      - name: Set environment variables
-        env:
-          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
-        run: |
-          echo "STUID=$PARSE_STUID" >> $GITHUB_ENV
-          echo "VFILE=${{ needs.setup.outputs.VFILE }}" >> $GITHUB_ENV
 
       - name: Run STA
         run: |
