@@ -76,6 +76,20 @@ jobs:
               MAKEJOBS=`nproc`
             fi
           fi
+
+          if ! [[ "$STUID" =~ ^[0-9]{8}$ ]]; then
+            echo "Invalid STUID format. Expect 8 digits."
+            false
+          fi
+          if ! git check-ref-format --branch "$BRANCH" >/dev/null 2>&1; then
+            echo "Invalid branch name format."
+            false
+          fi
+          if ! [[ "$REPO" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(\.git)?$ ]]; then
+            echo "Invalid repository URL format."
+            false
+          fi
+
           echo "STUID=$STUID" >> $GITHUB_OUTPUT
           echo "REPO=$REPO" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
@@ -127,8 +141,10 @@ jobs:
           git config --global user.name "ysyx-ci"
 
       - name: Set student ID as environment variable
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
-          echo "STUID=${{ needs.parse.outputs.STUID }}" >> $GITHUB_ENV
+          echo "STUID=$PARSE_STUID" >> $GITHUB_ENV
 
       - name: Check branch
         env:
@@ -153,12 +169,17 @@ jobs:
           echo "YSYX_HOME=$YSYX_HOME" >> $GITHUB_OUTPUT
 
       - name: Clone target repo
+        env:
+          PARSE_BRANCH: ${{ needs.parse.outputs.BRANCH }}
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
         run: |
           mkdir -p $YSYX_HOME
           cd $YSYX_HOME/..
-          git clone --depth 1 -b ${{ needs.parse.outputs.BRANCH }} ${{ needs.parse.outputs.REPO }} ysyx-workbench
+          git clone --depth 1 -b "$PARSE_BRANCH" "$PARSE_REPO" ysyx-workbench
 
       - name: Create orphan branch
+        env:
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
         run: |
           cd $YSYX_HOME
           git checkout --orphan tmp-ci
@@ -168,7 +189,7 @@ jobs:
           rm -rf ysyx-workbench
           mv ysyx-workbench-ci ysyx-workbench
           cd $YSYX_HOME
-          git remote set-url origin ${{ needs.parse.outputs.REPO }}
+          git remote set-url origin "$PARSE_REPO"
 
       - name: Check student ID
         run: |
@@ -650,8 +671,10 @@ jobs:
           make -C $NPC_HOME verilog
 
       - name: Set environment variables
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
-          echo "STUID=${{ needs.parse.outputs.STUID }}" >> $GITHUB_ENV
+          echo "STUID=$PARSE_STUID" >> $GITHUB_ENV
           echo "VFILE=${{ needs.setup.outputs.VFILE }}" >> $GITHUB_ENV
 
       - name: Run STA
@@ -755,9 +778,11 @@ jobs:
           make ARCH=riscv32e-npc -C $YSYX_HOME/am-kernels/benchmarks/microbench mainargs=the_insert-arg_rule_in_Makefile_will_insert_mainargs_here
 
       - name: run microbench with iverilog netlist
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
           make -C $NPC_HOME clean
-          NETLIST=`pwd`/ysyx_${{ needs.parse.outputs.STUID }}.netlist.fixed.v
+          NETLIST=`pwd`/ysyx_${PARSE_STUID}.netlist.fixed.v
           CELLS=`pwd`/yosys-sta/pdk/nangate45/sim/cells.v
           KEY=$(head -c 5 /dev/urandom | base32)
           IMG=$YSYX_HOME/am-kernels/benchmarks/microbench/build/microbench-riscv32e-npc.bin
@@ -809,13 +834,17 @@ jobs:
           git reset HEAD .github
 
       - name: Add info
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
+          PARSE_BRANCH: ${{ needs.parse.outputs.BRANCH }}
         run: |
           echo "" >> README.md
-          echo "STUID - ysyx_${{ needs.parse.outputs.STUID }}" >> README.md
+          echo "STUID - ysyx_${PARSE_STUID}" >> README.md
           echo "" >> README.md
-          echo "Original repo - ${{ needs.parse.outputs.REPO }}" >> README.md
+          echo "Original repo - ${PARSE_REPO}" >> README.md
           echo "" >> README.md
-          echo "Original branch - ${{ needs.parse.outputs.BRANCH }}" >> README.md
+          echo "Original branch - ${PARSE_BRANCH}" >> README.md
           git add -f README.md
           git commit -m "add original info"
 
@@ -841,8 +870,9 @@ jobs:
       - name: Push code
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
-          git push origin HEAD:ysyx_${{ needs.parse.outputs.STUID }}
+          git push origin "HEAD:ysyx_${PARSE_STUID}"
 
   finish:
     needs: [parse, push-code]
