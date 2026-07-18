@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Print issue details
         if: ${{ github.event_name == 'issues' }}
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body || '' }}
         run: |
           echo "🆕 New Issue Created"
           echo "---------------------"
@@ -44,7 +46,7 @@ jobs:
           echo "🔗 URL: ${{ github.event.issue.html_url }}"
           echo ""
           echo "📝 Body Content:"
-          echo "${{ github.event.issue.body }}"  # 直接输出issue正文
+          printf '%s\n' "$ISSUE_BODY"  # 直接输出issue正文
       - name: Print manual dispatch details
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
@@ -55,6 +57,8 @@ jobs:
           echo "🆔 STUID: ${{ inputs.student_id }}"
       - name: Parse information
         id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body || '' }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             STUID="${{ inputs.student_id }}"
@@ -63,12 +67,12 @@ jobs:
             COMMENT="manual dispatch"
             MAKEJOBS=1
           else
-            STUID=$(echo "${{ github.event.issue.body }}" | sed -n -e '3p')
-            REPO=$(echo "${{ github.event.issue.body }}" | sed -n -e '7p')
-            BRANCH=$(echo "${{ github.event.issue.body }}" | sed -n -e '11p')
-            COMMENT=$(echo "${{ github.event.issue.body }}" | sed -n -e '15p')
+            STUID=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '3p')
+            REPO=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '7p')
+            BRANCH=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '11p')
+            COMMENT=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '15p')
             MAKEJOBS=1
-            if echo "${{ github.event.issue.body }}" | sed -n -e '19p' | grep '^- \[ \] ' ; then
+            if printf '%s\n' "$ISSUE_BODY" | sed -n -e '19p' | grep '^- \[ \] ' ; then
               MAKEJOBS=`nproc`
             fi
           fi
