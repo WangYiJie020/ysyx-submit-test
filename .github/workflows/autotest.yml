@@ -3,6 +3,20 @@ name: Auto-test Workflow
 on:
   issues:
     types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      repo_url:
+        description: 提交仓库链接
+        required: true
+        type: string
+      branch:
+        description: 提交分支
+        required: true
+        type: string
+      student_id:
+        description: 学号（8位数字）
+        required: true
+        type: string
 
 permissions:
   issues: write
@@ -21,6 +35,9 @@ jobs:
       COMMENT_ID: ${{ steps.comment-id.outputs.COMMENT_ID }}
     steps:
       - name: Print issue details
+        if: ${{ github.event_name == 'issues' }}
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body || '' }}
         run: |
           echo "🆕 New Issue Created"
           echo "---------------------"
@@ -29,31 +46,63 @@ jobs:
           echo "🔗 URL: ${{ github.event.issue.html_url }}"
           echo ""
           echo "📝 Body Content:"
-          echo "${{ github.event.issue.body }}"  # 直接输出issue正文
+          printf '%s\n' "$ISSUE_BODY"  # 直接输出issue正文
+      - name: Print manual dispatch details
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          echo "🆕 Manual Workflow Dispatch"
+          echo "---------------------------"
+          echo "📦 Repo: ${{ inputs.repo_url }}"
+          echo "🌿 Branch: ${{ inputs.branch }}"
+          echo "🆔 STUID: ${{ inputs.student_id }}"
       - name: Parse information
         id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body || '' }}
         run: |
-          STUID=$(echo "${{ github.event.issue.body }}" | sed -n -e '3p')
-          REPO=$(echo "${{ github.event.issue.body }}" | sed -n -e '7p')
-          BRANCH=$(echo "${{ github.event.issue.body }}" | sed -n -e '11p')
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            STUID="${{ inputs.student_id }}"
+            REPO="${{ inputs.repo_url }}"
+            BRANCH="${{ inputs.branch }}"
+            COMMENT="manual dispatch"
+            MAKEJOBS=1
+          else
+            STUID=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '3p')
+            REPO=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '7p')
+            BRANCH=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '11p')
+            COMMENT=$(printf '%s\n' "$ISSUE_BODY" | sed -n -e '15p')
+            MAKEJOBS=1
+            if printf '%s\n' "$ISSUE_BODY" | sed -n -e '19p' | grep '^- \[ \] ' ; then
+              MAKEJOBS=`nproc`
+            fi
+          fi
+
+          if ! [[ "$STUID" =~ ^[0-9]{8}$ ]]; then
+            echo "Invalid STUID format. Expect 8 digits."
+            false
+          fi
+          if ! git check-ref-format --branch "$BRANCH" >/dev/null 2>&1; then
+            echo "Invalid branch name format."
+            false
+          fi
+          if ! [[ "$REPO" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(\.git)?$ ]]; then
+            echo "Invalid repository URL format."
+            false
+          fi
+
           echo "STUID=$STUID" >> $GITHUB_OUTPUT
           echo "REPO=$REPO" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
 
           sudo timedatectl set-timezone Asia/Shanghai
           DATE=`date +"%F %T.%N"`
-          COMMENT=$(echo "${{ github.event.issue.body }}" | sed -n -e '15p')
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           echo "DATE=$DATE" >> $GITHUB_OUTPUT
           echo "COMMENT=$COMMENT" >> $GITHUB_OUTPUT
           echo "RUN_URL=$RUN_URL" >> $GITHUB_OUTPUT
-
-          MAKEJOBS=1
-          if echo "${{ github.event.issue.body }}" | sed -n -e '19p' | grep '^- \[ \] ' ; then
-            MAKEJOBS=`nproc`
-          fi
           echo "MAKEJOBS=$MAKEJOBS" >> $GITHUB_OUTPUT
       - name: Comment the issue
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -62,6 +111,7 @@ jobs:
             Comment - ${{ steps.parse.outputs.COMMENT }}
             Workflow URL - ${{ steps.parse.outputs.RUN_URL }}
       - name: Find Comment
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -71,12 +121,17 @@ jobs:
       - name: Export comment ID
         id: comment-id
         run: |
-          COMMENT_ID=${{ steps.fc.outputs.comment-id }}
+          COMMENT_ID="${{ steps.fc.outputs.comment-id }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            COMMENT_ID=""
+          fi
           echo "COMMENT_ID=$COMMENT_ID" >> $GITHUB_OUTPUT
 
   setup:
     needs: parse
     runs-on: ubuntu-22.04
+    env:
+      STUID: ${{ needs.parse.outputs.STUID }}
     outputs:
       YSYX_HOME: ${{ steps.set-ysyx-home.outputs.YSYX_HOME }}
       VFILE:     ${{ steps.vfilename.outputs.VFILE }}
@@ -86,10 +141,6 @@ jobs:
         run: |
           git config --global user.email "ci@ysyx.org"
           git config --global user.name "ysyx-ci"
-
-      - name: Set student ID as environment variable
-        run: |
-          echo "STUID=${{ needs.parse.outputs.STUID }}" >> $GITHUB_ENV
 
       - name: Check branch
         env:
@@ -114,12 +165,17 @@ jobs:
           echo "YSYX_HOME=$YSYX_HOME" >> $GITHUB_OUTPUT
 
       - name: Clone target repo
+        env:
+          PARSE_BRANCH: ${{ needs.parse.outputs.BRANCH }}
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
         run: |
           mkdir -p $YSYX_HOME
           cd $YSYX_HOME/..
-          git clone --depth 1 -b ${{ needs.parse.outputs.BRANCH }} ${{ needs.parse.outputs.REPO }} ysyx-workbench
+          git clone --depth 1 -b "$PARSE_BRANCH" "$PARSE_REPO" ysyx-workbench
 
       - name: Create orphan branch
+        env:
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
         run: |
           cd $YSYX_HOME
           git checkout --orphan tmp-ci
@@ -129,7 +185,7 @@ jobs:
           rm -rf ysyx-workbench
           mv ysyx-workbench-ci ysyx-workbench
           cd $YSYX_HOME
-          git remote set-url origin ${{ needs.parse.outputs.REPO }}
+          git remote set-url origin "$PARSE_REPO"
 
       - name: Check student ID
         run: |
@@ -185,6 +241,7 @@ jobs:
           rm log.txt
 
       - name: Comment the issue
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -582,6 +639,9 @@ jobs:
   yosys-sta:
     needs: [parse, setup]
     runs-on: ubuntu-22.04
+    env:
+      STUID: ${{ needs.parse.outputs.STUID }}
+      VFILE: ${{ needs.setup.outputs.VFILE }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -608,11 +668,6 @@ jobs:
       - name: Generate Verilog
         run: |
           make -C $NPC_HOME verilog
-
-      - name: Set environment variables
-        run: |
-          echo "STUID=${{ needs.parse.outputs.STUID }}" >> $GITHUB_ENV
-          echo "VFILE=${{ needs.setup.outputs.VFILE }}" >> $GITHUB_ENV
 
       - name: Run STA
         run: |
@@ -715,9 +770,11 @@ jobs:
           make ARCH=riscv32e-npc -C $YSYX_HOME/am-kernels/benchmarks/microbench mainargs=the_insert-arg_rule_in_Makefile_will_insert_mainargs_here
 
       - name: run microbench with iverilog netlist
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
           make -C $NPC_HOME clean
-          NETLIST=`pwd`/ysyx_${{ needs.parse.outputs.STUID }}.netlist.fixed.v
+          NETLIST=`pwd`/ysyx_${PARSE_STUID}.netlist.fixed.v
           CELLS=`pwd`/yosys-sta/pdk/nangate45/sim/cells.v
           KEY=$(head -c 5 /dev/urandom | base32)
           IMG=$YSYX_HOME/am-kernels/benchmarks/microbench/build/microbench-riscv32e-npc.bin
@@ -769,13 +826,17 @@ jobs:
           git reset HEAD .github
 
       - name: Add info
+        env:
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
+          PARSE_REPO: ${{ needs.parse.outputs.REPO }}
+          PARSE_BRANCH: ${{ needs.parse.outputs.BRANCH }}
         run: |
           echo "" >> README.md
-          echo "STUID - ysyx_${{ needs.parse.outputs.STUID }}" >> README.md
+          echo "STUID - ysyx_${PARSE_STUID}" >> README.md
           echo "" >> README.md
-          echo "Original repo - ${{ needs.parse.outputs.REPO }}" >> README.md
+          echo "Original repo - ${PARSE_REPO}" >> README.md
           echo "" >> README.md
-          echo "Original branch - ${{ needs.parse.outputs.BRANCH }}" >> README.md
+          echo "Original branch - ${PARSE_BRANCH}" >> README.md
           git add -f README.md
           git commit -m "add original info"
 
@@ -801,14 +862,16 @@ jobs:
       - name: Push code
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PARSE_STUID: ${{ needs.parse.outputs.STUID }}
         run: |
-          git push origin HEAD:ysyx_${{ needs.parse.outputs.STUID }}
+          git push origin "HEAD:ysyx_${PARSE_STUID}"
 
   finish:
     needs: [parse, push-code]
     runs-on: ubuntu-22.04
     steps:
       - name: Comment the issue
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -818,6 +881,7 @@ jobs:
           edit-mode: append
 
       - name: Close the issue
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/close-issue@v2
         with:
           issue-number: ${{ github.event.issue.number }}
@@ -828,6 +892,7 @@ jobs:
     if: ${{ failure() }}
     steps:
       - name: Comment the issue
+        if: ${{ github.event_name == 'issues' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
