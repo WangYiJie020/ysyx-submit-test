@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Sign and deliver webhook with retries
+      - name: Deliver authenticated webhook with retries
         shell: bash
         env:
           WEBHOOK_URL: ${{ secrets.FEISHU_WORKFLOW_WEBHOOK_URL }}
@@ -28,24 +28,6 @@ jobs:
             echo "::error::Feishu webhook URL or secret is not configured"
             exit 1
           fi
-
-          signature="$(
-            python3 - <<'PY'
-          import hashlib
-          import hmac
-          import os
-
-          with open(os.environ["GITHUB_EVENT_PATH"], "rb") as payload_file:
-              payload = payload_file.read()
-
-          digest = hmac.new(
-              os.environ["WEBHOOK_SECRET"].encode(),
-              payload,
-              hashlib.sha256,
-          ).hexdigest()
-          print(f"sha256={digest}")
-          PY
-          )"
 
           max_attempts=10
           attempt=1
@@ -64,10 +46,10 @@ jobs:
                 --max-time 45 \
                 --request POST \
                 --header 'Content-Type: application/json' \
-                --header 'User-Agent: GitHub-Hookshot/workflow-retry' \
+                --header "Authorization: Bearer ${WEBHOOK_SECRET}" \
+                --header 'User-Agent: GitHub-Actions/feishu-workflow-retry' \
                 --header 'X-GitHub-Event: workflow_run' \
                 --header "X-GitHub-Delivery: ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-                --header "X-Hub-Signature-256: ${signature}" \
                 --data-binary "@${GITHUB_EVENT_PATH}" \
                 "${WEBHOOK_URL}"
             )" && curl_status=0 || curl_status=$?
