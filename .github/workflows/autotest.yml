@@ -712,6 +712,7 @@ jobs:
 
   more-tests:
     needs: [setup, hello, cpu-tests, riscv-tests, riscv-arch-test, microbench, rt-thread, iverilog-microbench, yosys-sta, iverilog-netlist-microbench]
+    # Allow skipped long-running dependencies without running after a failure or cancellation.
     if: ${{ always() && !cancelled() && !failure() && !inputs.skip_more_tests }}
     runs-on: self-hosted
     steps:
