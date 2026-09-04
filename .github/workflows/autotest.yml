@@ -34,11 +34,6 @@ on:
         required: false
         default: false
         type: boolean
-      base_record_id:
-        description: Deprecated compatibility input; no longer used in the run title
-        required: false
-        default: ''
-        type: string
       remark:
         description: Optional note displayed in the Workflow Run title
         required: false
