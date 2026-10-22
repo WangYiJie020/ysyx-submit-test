@@ -437,11 +437,16 @@ jobs:
 
       - name: Start upterm session
         id: upterm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ACTOR="${{ github.triggering_actor }}"
+          mkdir -p ~/.ssh
+          ssh-keyscan uptermd.upterm.dev >> ~/.ssh/known_hosts 2>/dev/null || true
           # setsid 脱离进程组, 避免 step 结束时 runner 杀掉 upterm 进程
+          # --github-user 限制只有触发者的 GitHub SSH 公钥能连
           setsid upterm host --accept --server wss://uptermd.upterm.dev \
-            --authorized-user "github:${ACTOR}" \
+            --github-user "${ACTOR}" \
             -- bash -l > /tmp/upterm.log 2>&1 < /dev/null &
           disown || true
           # 等待连接串出现
@@ -454,6 +459,8 @@ jobs:
           CONN=$(grep -oE "ssh [^ ]+@[^ ]+" /tmp/upterm.log | head -1 || true)
           echo "CONN=$CONN"
           echo "conn=$CONN" >> $GITHUB_OUTPUT
+          # 通过 check-run annotation 暴露连接串, 便于程序化读取(step 完成即可见)
+          echo "::notice title=upterm-ssh::CONN=$CONN"
 
       - name: Wait for continue
         run: |
