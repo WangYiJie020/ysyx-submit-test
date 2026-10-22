@@ -411,8 +411,29 @@ jobs:
           path: /tmp/artifact-upload/
           retention-days: 1
 
-  am-tests-ysyxsoc:
+  # 临时调试：setup 完成后开一个公开 SSH 会话并阻塞后续 jobs，
+  # 用于登入检查运行 NEMU 所需的前置条件。调试完成后删除此 job 及各 needs 中的引用。
+  ssh-debug:
     needs: setup
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
+
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v1
+        with:
+          limit-access-to-actor: true
+
+  am-tests-ysyxsoc:
+    needs: [setup, ssh-debug]
     uses: ./.github/workflows/am-tests.yml
     with:
       arch: riscv32e-ysyxsoc
