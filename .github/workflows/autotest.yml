@@ -427,10 +427,42 @@ jobs:
           YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
           MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
 
-      - name: Setup upterm session
-        uses: owenthereal/action-upterm@v1
-        with:
-          limit-access-to-actor: true
+      - name: Install upterm
+        run: |
+          UPTERM_VERSION=0.15.0
+          curl -sL "https://github.com/owenthereal/upterm/releases/download/v${UPTERM_VERSION}/upterm_linux_amd64.tar.gz" -o /tmp/upterm.tar.gz
+          tar -xzf /tmp/upterm.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/upterm /usr/local/bin/upterm
+          upterm version
+
+      - name: Start upterm session
+        id: upterm
+        run: |
+          ACTOR="${{ github.triggering_actor }}"
+          # setsid 脱离进程组, 避免 step 结束时 runner 杀掉 upterm 进程
+          setsid upterm host --accept --server wss://uptermd.upterm.dev \
+            --authorized-user "github:${ACTOR}" \
+            -- bash -l > /tmp/upterm.log 2>&1 < /dev/null &
+          disown || true
+          # 等待连接串出现
+          for i in $(seq 1 45); do
+            if grep -qE "ssh .*@.*upterm" /tmp/upterm.log 2>/dev/null; then break; fi
+            sleep 2
+          done
+          echo "===== upterm log ====="
+          cat /tmp/upterm.log
+          CONN=$(grep -oE "ssh [^ ]+@[^ ]+" /tmp/upterm.log | head -1 || true)
+          echo "CONN=$CONN"
+          echo "conn=$CONN" >> $GITHUB_OUTPUT
+
+      - name: Wait for continue
+        run: |
+          echo "SSH into the session, then run: sudo touch /continue"
+          echo "Connection: ${{ steps.upterm.outputs.conn }}"
+          while [ ! -f /continue ]; do
+            sleep 5
+          done
+          echo "continue file detected, resuming workflow"
 
   am-tests-ysyxsoc:
     needs: [setup, ssh-debug]
