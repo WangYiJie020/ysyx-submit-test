@@ -1,0 +1,143 @@
+name: AM Tests
+
+# 可被其他 workflow 复用的测试集合：
+# 使用指定的 ARCH(如 riscv32e-ysyxsoc / riscv32e-nemu) 依次运行
+# hello, cpu-tests, riscv-tests, riscv-arch-test, microbench, rt-thread
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        description: ARCH used to run the tests, e.g. riscv32e-ysyxsoc
+        required: true
+        type: string
+      YSYX_HOME:
+        required: true
+        type: string
+      MAKEFLAGS:
+        required: true
+        type: string
+      skip_long_running_jobs:
+        required: false
+        default: false
+        type: boolean
+
+env:
+  OSS_CAD_SUITE_RELEASE_TAG: 2025-11-24
+
+jobs:
+  hello:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: hello
+        run: |
+          KEY=$(head -c 5 /dev/urandom | base32)
+          python $MONITOR_PY --middle="Hello, AbstractMachine!" --good=$KEY make ARCH=${{ inputs.arch }} -C $YSYX_HOME/am-kernels/kernels/hello run mainargs=$KEY
+
+  cpu-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: cpu-tests
+        run: |
+          make ARCH=${{ inputs.arch }} -C $YSYX_HOME/am-kernels/tests/cpu-tests run ALL=dummy
+          make ARCH=${{ inputs.arch }} -C $YSYX_HOME/am-kernels/tests/cpu-tests run
+
+  riscv-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: riscv-tests
+        run: |
+          git clone --depth 1 https://github.com/NJU-ProjectN/riscv-tests-am
+          make ARCH=${{ inputs.arch }} -C riscv-tests-am run TEST_ISA=i ALL=auipc
+          make ARCH=${{ inputs.arch }} -C riscv-tests-am run TEST_ISA=i
+
+  riscv-arch-test:
+    if: ${{ !inputs.skip_long_running_jobs }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: riscv-arch-test
+        run: |
+          git clone --depth 1 https://github.com/NJU-ProjectN/riscv-arch-test-am
+          make ARCH=${{ inputs.arch }} -C riscv-arch-test-am run TEST_ISA=E ALL=add-01
+          make ARCH=${{ inputs.arch }} -C riscv-arch-test-am run TEST_ISA="E Zifencei"
+
+  microbench:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: microbench
+        run: |
+          KEY=$(head -c 5 /dev/urandom | base32)
+          python $MONITOR_PY --good="$KEY" make ARCH=${{ inputs.arch }} -C $YSYX_HOME/am-kernels/benchmarks/microbench run mainargs=$KEY
+
+  rt-thread:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common operations
+        uses: ./.github/actions/common
+        with:
+          YSYX_HOME: ${{ inputs.YSYX_HOME }}
+          MAKEFLAGS: ${{ inputs.MAKEFLAGS }}
+
+      - name: Install dependency
+        run: sudo apt install -y scons
+
+      - name: rt-thread
+        run: |
+          cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
+          make ARCH=${{ inputs.arch }} init
+          KEY=$(head -c 5 /dev/urandom | base32)
+          python $MONITOR_PY --good=$KEY make ARCH=${{ inputs.arch }} run

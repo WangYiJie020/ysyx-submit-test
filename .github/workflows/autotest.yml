@@ -411,127 +411,24 @@ jobs:
           path: /tmp/artifact-upload/
           retention-days: 1
 
-  hello:
+  am-tests-ysyxsoc:
     needs: setup
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    uses: ./.github/workflows/am-tests.yml
+    with:
+      arch: riscv32e-ysyxsoc
+      YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
+      MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
+      skip_long_running_jobs: ${{ inputs.skip_long_running_jobs }}
 
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: hello
-        run: |
-          KEY=$(head -c 5 /dev/urandom | base32)
-          python $MONITOR_PY --middle="Hello, AbstractMachine!" --good=$KEY make ARCH=riscv32e-ysyxsoc -C $YSYX_HOME/am-kernels/kernels/hello run mainargs=$KEY
-
-  cpu-tests:
-    needs: setup
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: cpu-tests
-        run: |
-          make ARCH=riscv32e-ysyxsoc -C $YSYX_HOME/am-kernels/tests/cpu-tests run ALL=dummy
-          make ARCH=riscv32e-ysyxsoc -C $YSYX_HOME/am-kernels/tests/cpu-tests run
-
-  riscv-tests:
-    needs: setup
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: riscv-tests
-        run: |
-          git clone --depth 1 https://github.com/NJU-ProjectN/riscv-tests-am
-          make ARCH=riscv32e-ysyxsoc -C riscv-tests-am run TEST_ISA=i ALL=auipc
-          make ARCH=riscv32e-ysyxsoc -C riscv-tests-am run TEST_ISA=i
-
-  riscv-arch-test:
-    needs: setup
-    if: ${{ !inputs.skip_long_running_jobs }}
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: riscv-arch-test
-        run: |
-          git clone --depth 1 https://github.com/NJU-ProjectN/riscv-arch-test-am
-          make ARCH=riscv32e-ysyxsoc -C riscv-arch-test-am run TEST_ISA=E ALL=add-01
-          make ARCH=riscv32e-ysyxsoc -C riscv-arch-test-am run TEST_ISA="E Zifencei"
-
-  microbench:
-    needs: setup
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: microbench
-        run: |
-          KEY=$(head -c 5 /dev/urandom | base32)
-          python $MONITOR_PY --good="$KEY" make ARCH=riscv32e-ysyxsoc -C $YSYX_HOME/am-kernels/benchmarks/microbench run mainargs=$KEY
-
-  rt-thread:
-    needs: setup
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Common operations
-        uses: ./.github/actions/common
-        with:
-          YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
-          MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
-
-      - name: Install dependency
-        run: sudo apt install -y scons
-
-      - name: rt-thread
-        run: |
-          cd $YSYX_HOME/rt-thread-am/bsp/abstract-machine
-          make ARCH=riscv32e-ysyxsoc init
-          KEY=$(head -c 5 /dev/urandom | base32)
-          python $MONITOR_PY --good=$KEY make ARCH=riscv32e-ysyxsoc run
+  # 待 ysyxsoc 全部通过后，再使用 NEMU 测试一次
+  am-tests-nemu:
+    needs: am-tests-ysyxsoc
+    uses: ./.github/workflows/am-tests.yml
+    with:
+      arch: riscv32e-nemu
+      YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
+      MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
+      skip_long_running_jobs: ${{ inputs.skip_long_running_jobs }}
 
   iverilog-microbench:
     needs: setup
@@ -706,7 +603,7 @@ jobs:
           python $MONITOR_PY --good=$KEY make -C $NPC_HOME sim-iverilog-netlist IMG=$IMG NETLIST=$NETLIST CELLS=$CELLS
 
   more-tests:
-    needs: [setup, hello, cpu-tests, riscv-tests, riscv-arch-test, microbench, rt-thread, iverilog-microbench, yosys-sta, iverilog-netlist-microbench]
+    needs: [setup, am-tests-ysyxsoc, am-tests-nemu, iverilog-microbench, yosys-sta, iverilog-netlist-microbench]
     # Allow skipped long-running dependencies without running after a failure or cancellation.
     if: ${{ always() && !cancelled() && !failure() && !inputs.skip_more_tests }}
     runs-on: self-hosted
