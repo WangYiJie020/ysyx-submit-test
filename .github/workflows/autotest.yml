@@ -427,45 +427,15 @@ jobs:
           YSYX_HOME: ${{ needs.setup.outputs.YSYX_HOME }}
           MAKEFLAGS: ${{ needs.setup.outputs.MAKEFLAGS }}
 
-      - name: Install upterm
-        run: |
-          UPTERM_VERSION=0.15.0
-          curl -sL "https://github.com/owenthereal/upterm/releases/download/v${UPTERM_VERSION}/upterm_linux_amd64.tar.gz" -o /tmp/upterm.tar.gz
-          tar -xzf /tmp/upterm.tar.gz -C /tmp
-          sudo install -m 0755 /tmp/upterm /usr/local/bin/upterm
-          upterm version
-
-      - name: Start upterm session
-        id: upterm
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ACTOR="${{ github.triggering_actor }}"
-          mkdir -p ~/.ssh
-          ssh-keyscan uptermd.upterm.dev >> ~/.ssh/known_hosts 2>/dev/null || true
-          # setsid 脱离进程组, 避免 step 结束时 runner 杀掉 upterm 进程
-          # --github-user 限制只有触发者的 GitHub SSH 公钥能连
-          setsid upterm host --accept --server wss://uptermd.upterm.dev \
-            --github-user "${ACTOR}" \
-            -- bash -l > /tmp/upterm.log 2>&1 < /dev/null &
-          disown || true
-          # 等待连接串出现
-          for i in $(seq 1 45); do
-            if grep -qE "ssh .*@.*upterm" /tmp/upterm.log 2>/dev/null; then break; fi
-            sleep 2
-          done
-          echo "===== upterm log ====="
-          cat /tmp/upterm.log
-          CONN=$(grep -oE "ssh [^ ]+@[^ ]+" /tmp/upterm.log | head -1 || true)
-          echo "CONN=$CONN"
-          echo "conn=$CONN" >> $GITHUB_OUTPUT
-          # 通过 check-run annotation 暴露连接串, 便于程序化读取(step 完成即可见)
-          echo "::notice title=upterm-ssh::CONN=$CONN"
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v1
+        with:
+          limit-access-to-actor: true
 
       - name: Wait for continue
         run: |
-          echo "SSH into the session, then run: sudo touch /continue"
-          echo "Connection: ${{ steps.upterm.outputs.conn }}"
+          echo "SSH into the session (see connection string above / in job summary),"
+          echo "then run: sudo touch /continue  (or just exit the session)"
           while [ ! -f /continue ]; do
             sleep 5
           done
