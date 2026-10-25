@@ -324,6 +324,15 @@ jobs:
           cd $YSYX_HOME
           git clone --depth 1 -b no-gui https://github.com/NJU-ProjectN/nvboard
 
+      - name: Check NEMU compilation
+        run: |
+          cd $NEMU_HOME
+          make clean
+          make -s -C tools/kconfig NAME=conf
+          make -s -C tools/fixdep
+          tools/kconfig/build/conf -s --alldefconfig Kconfig
+          make
+
       - name: Clean up
         run: |
           make -C $NEMU_HOME clean
