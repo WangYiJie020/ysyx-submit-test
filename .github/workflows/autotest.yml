@@ -279,8 +279,9 @@ jobs:
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           cd $NEMU_HOME
           make clean
-          make -s -C tools/kconfig NAME=conf
-          make -s -C tools/fixdep
+          # kconfig 的 Makefile 并行时会同时运行两次 bison 写坏 parser.tab.c，工具单线程构建
+          make -s -j1 -C tools/kconfig NAME=conf
+          make -s -j1 -C tools/fixdep
           tools/kconfig/build/conf -s --alldefconfig Kconfig
           make
 
