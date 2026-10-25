@@ -326,6 +326,9 @@ jobs:
 
       - name: Check NEMU compilation
         run: |
+          # 默认配置可能开启 ITRACE，反汇编依赖 LLVM
+          sudo apt-get update -qq
+          sudo apt-get install -y llvm llvm-dev
           cd $NEMU_HOME
           make clean
           make -s -C tools/kconfig NAME=conf
