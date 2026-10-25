@@ -270,6 +270,18 @@ jobs:
           fi
           mill --version
 
+      - name: Check NEMU compilation
+        run: |
+          # 默认配置可能开启 ITRACE，反汇编依赖 LLVM
+          sudo apt-get update -qq
+          sudo apt-get install -y llvm llvm-dev
+          cd $NEMU_HOME
+          make clean
+          make -s -C tools/kconfig NAME=conf
+          make -s -C tools/fixdep
+          tools/kconfig/build/conf -s --alldefconfig Kconfig
+          make
+
       - name: Get ysyxSoC tag
         id: soc-tag
         run: |
@@ -323,18 +335,6 @@ jobs:
         run: |
           cd $YSYX_HOME
           git clone --depth 1 -b no-gui https://github.com/NJU-ProjectN/nvboard
-
-      - name: Check NEMU compilation
-        run: |
-          # 默认配置可能开启 ITRACE，反汇编依赖 LLVM
-          sudo apt-get update -qq
-          sudo apt-get install -y llvm llvm-dev
-          cd $NEMU_HOME
-          make clean
-          make -s -C tools/kconfig NAME=conf
-          make -s -C tools/fixdep
-          tools/kconfig/build/conf -s --alldefconfig Kconfig
-          make
 
       - name: Clean up
         run: |
